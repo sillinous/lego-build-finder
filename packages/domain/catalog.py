@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from .lego_domain import LegoSet
+from .lego_domain import LegoSet, SetRequirement
 
 
 @dataclass(frozen=True)
@@ -20,4 +20,4 @@ class CatalogProvider(Protocol):
 
     def get_set(self, set_id: str) -> LegoSet: ...
 
-    def get_set_inventory(self, set_id: str): ...
+    def get_set_inventory(self, set_id: str) -> list[SetRequirement]: ...
