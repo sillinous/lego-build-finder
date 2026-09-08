@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterable
 from pathlib import Path
 
 from packages.domain import Inventory, LegoSet, SetRequirement
@@ -27,18 +28,23 @@ class SQLiteCatalog:
         with self._connect() as connection:
             connection.executescript(schema)
 
-    def upsert_set(self, lego_set: LegoSet) -> None:
+    def upsert_sets(self, lego_sets: Iterable[LegoSet]) -> None:
+        """Atomically replace inventories for a batch of sets."""
         with self._connect() as connection:
-            connection.execute(
-                "INSERT INTO sets(set_id, name, year) VALUES (?, ?, ?) "
-                "ON CONFLICT(set_id) DO UPDATE SET name=excluded.name, year=excluded.year",
-                (lego_set.set_id, lego_set.name, lego_set.year),
-            )
-            connection.execute("DELETE FROM set_inventory WHERE set_id = ?", (lego_set.set_id,))
-            connection.executemany(
-                "INSERT INTO set_inventory(set_id, part_id, color, quantity) VALUES (?, ?, ?, ?)",
-                [(lego_set.set_id, r.part_id, r.color, r.quantity) for r in lego_set.inventory],
-            )
+            for lego_set in lego_sets:
+                connection.execute(
+                    "INSERT INTO sets(set_id, name, year) VALUES (?, ?, ?) "
+                    "ON CONFLICT(set_id) DO UPDATE SET name=excluded.name, year=excluded.year",
+                    (lego_set.set_id, lego_set.name, lego_set.year),
+                )
+                connection.execute("DELETE FROM set_inventory WHERE set_id = ?", (lego_set.set_id,))
+                connection.executemany(
+                    "INSERT INTO set_inventory(set_id, part_id, color, quantity) VALUES (?, ?, ?, ?)",
+                    [(lego_set.set_id, r.part_id, r.color, r.quantity) for r in lego_set.inventory],
+                )
+
+    def upsert_set(self, lego_set: LegoSet) -> None:
+        self.upsert_sets([lego_set])
 
     def get_set(self, set_id: str) -> LegoSet:
         with self._connect() as connection:
