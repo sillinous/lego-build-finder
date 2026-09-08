@@ -6,6 +6,8 @@ from typing import Protocol
 from packages.domain import Inventory
 from .inventory_resolver import InventoryResolver
 from .models import Frame, MediaType, PieceObservation, ScanResult
+from .temporal import TemporalEvidenceAggregator
+from .tracking import CentroidTracker
 
 
 class VisionEngine(Protocol):
@@ -28,11 +30,19 @@ class ScanPipelineResult:
 
 
 class ScanPipeline:
-    """Orchestrate frame inference and conservative inventory resolution."""
+    """Orchestrate frame inference, tracking, temporal evidence, and inventory resolution."""
 
-    def __init__(self, engine: VisionEngine | None = None, resolver: InventoryResolver | None = None) -> None:
+    def __init__(
+        self,
+        engine: VisionEngine | None = None,
+        resolver: InventoryResolver | None = None,
+        tracker: CentroidTracker | None = None,
+        temporal: TemporalEvidenceAggregator | None = None,
+    ) -> None:
         self.engine = engine or EmptyVisionEngine()
         self.resolver = resolver or InventoryResolver()
+        self.tracker = tracker or CentroidTracker()
+        self.temporal = temporal or TemporalEvidenceAggregator()
 
     def process(
         self,
@@ -43,21 +53,16 @@ class ScanPipeline:
         processed_frames: list[Frame] = []
         all_observations: list[PieceObservation] = []
         for frame in frames:
-            observations = tuple(self.engine.process_frame(frame))
-            processed = Frame(
-                frame.frame_id,
-                frame.index,
-                frame.timestamp_ms,
-                observations,
-                frame.source_path,
-            )
+            observations = self.tracker.update(self.engine.process_frame(frame))
+            processed = Frame(frame.frame_id, frame.index, frame.timestamp_ms, observations, frame.source_path)
             processed_frames.append(processed)
             all_observations.extend(observations)
 
+        consolidated = self.temporal.aggregate(all_observations)
         scan = ScanResult(
             scan_id=scan_id,
             media_type=media_type,
             frames=tuple(processed_frames),
-            observations=tuple(all_observations),
+            observations=consolidated,
         )
-        return ScanPipelineResult(scan=scan, inventory=self.resolver.resolve(all_observations))
+        return ScanPipelineResult(scan=scan, inventory=self.resolver.resolve(consolidated))
