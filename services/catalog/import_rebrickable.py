@@ -6,6 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from packages.domain import LegoSet, SetRequirement
+from services.catalog.metadata import ColorMetadata, PartMetadata
 from services.catalog.sqlite_catalog import SQLiteCatalog
 
 
@@ -18,36 +19,55 @@ def import_rebrickable(data_dir: str | Path, database: str | Path) -> tuple[int,
     """Import Rebrickable's downloaded CSV catalog into SQLite.
 
     Expected files are sets.csv, inventories.csv and inventory_parts.csv.
-    Spare inventory rows are excluded because they are optional extras rather
-    than pieces required to reproduce the standard set inventory.
+    Parts/colors metadata is imported when parts.csv and colors.csv are present.
+    Spare inventory rows are excluded because they are optional extras.
     """
     root = Path(data_dir)
-    paths = [root / name for name in ("sets.csv", "inventories.csv", "inventory_parts.csv")]
-    for path in paths:
+    required = [root / name for name in ("sets.csv", "inventories.csv", "inventory_parts.csv")]
+    for path in required:
         if not path.exists():
             raise FileNotFoundError(path)
 
     catalog = SQLiteCatalog(database)
-    valid_sets: dict[str, tuple[str, int | None]] = {}
-    for row in _rows(paths[0]):
-        set_num = row["set_num"].strip()
-        valid_sets[set_num] = (
-            row["name"].strip(),
-            int(row["year"]) if row.get("year") else None,
+
+    parts_path = root / "parts.csv"
+    if parts_path.exists():
+        catalog.upsert_parts(
+            PartMetadata(
+                row["part_num"].strip(),
+                row["name"].strip(),
+                row.get("part_cat_id", "").strip() or None,
+            )
+            for row in _rows(parts_path)
+            if row.get("part_num", "").strip() and row.get("name", "").strip()
         )
 
+    colors_path = root / "colors.csv"
+    if colors_path.exists():
+        catalog.upsert_colors(
+            ColorMetadata(
+                row["id"].strip(),
+                row["name"].strip(),
+                row.get("rgb", "").strip() or None,
+                row.get("is_trans", "N").strip().upper() == "Y",
+            )
+            for row in _rows(colors_path)
+            if row.get("id", "").strip() and row.get("name", "").strip()
+        )
+
+    valid_sets: dict[str, tuple[str, int | None]] = {}
+    for row in _rows(required[0]):
+        set_num = row["set_num"].strip()
+        valid_sets[set_num] = (row["name"].strip(), int(row["year"]) if row.get("year") else None)
+
     inventory_to_set: dict[str, str] = {}
-    for row in _rows(paths[1]):
+    for row in _rows(required[1]):
         set_num = row["set_num"].strip()
         if set_num in valid_sets:
             inventory_to_set[row["id"]] = set_num
 
-    # Keep the complete per-set aggregate in memory so a set is never
-    # accidentally written with a partial inventory. The catalog is currently
-    # small enough for this bootstrap importer; a future production importer
-    # can replace this with a SQL staging-table pipeline.
     parts_by_set: dict[str, dict[tuple[str, str], int]] = defaultdict(lambda: defaultdict(int))
-    for row in _rows(paths[2]):
+    for row in _rows(required[2]):
         if row.get("is_spare", "N").strip().upper() == "Y":
             continue
         set_num = inventory_to_set.get(row["inventory_id"])
@@ -61,11 +81,15 @@ def import_rebrickable(data_dir: str | Path, database: str | Path) -> tuple[int,
     def sets():
         for set_num, pieces in parts_by_set.items():
             name, year = valid_sets[set_num]
-            requirements = tuple(
-                SetRequirement(part_id, color_id, quantity)
-                for (part_id, color_id), quantity in sorted(pieces.items())
+            yield LegoSet(
+                set_num,
+                name,
+                year,
+                tuple(
+                    SetRequirement(part_id, color_id, quantity)
+                    for (part_id, color_id), quantity in sorted(pieces.items())
+                ),
             )
-            yield LegoSet(set_num, name, year, requirements)
 
     imported_sets = len(parts_by_set)
     imported_rows = sum(len(pieces) for pieces in parts_by_set.values())
