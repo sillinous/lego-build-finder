@@ -6,10 +6,10 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from packages.domain.lego_domain import Inventory, MatchMode, Piece, rank_matches
+from packages.domain import Inventory, InMemoryCatalogIndex, MatchMode, Piece, rank_matches
 from services.catalog.rebrickable import RebrickableCatalogProvider
 
-app = FastAPI(title="LEGO Build Finder API", version="0.1.0")
+app = FastAPI(title="LEGO Build Finder API", version="0.2.0")
 
 
 class InventoryItem(BaseModel):
@@ -23,6 +23,7 @@ class MatchRequest(BaseModel):
     mode: Literal["exact", "color_flexible"] = "exact"
     set_ids: list[str] = Field(default_factory=list)
     limit: int = Field(default=20, ge=1, le=100)
+    candidate_limit: int = Field(default=500, ge=1, le=5000)
 
 
 @app.get("/health")
@@ -44,10 +45,11 @@ def matches(request: MatchRequest):
     if request.set_ids:
         candidates = [catalog.get_set(set_id) for set_id in request.set_ids]
     else:
-        # A future indexed catalog will discover candidates from the inventory.
+        # API-backed candidate discovery is the next production adapter. The
+        # domain index already defines the efficient candidate-selection seam.
         raise HTTPException(
-            status_code=400,
-            detail="set_ids are required until the indexed catalog search is implemented",
+            status_code=501,
+            detail="indexed catalog backend is not configured yet",
         )
 
     results = rank_matches(inventory, candidates, MatchMode(request.mode))[: request.limit]

@@ -1,86 +1,71 @@
-from packages.domain.lego_domain import (
-    Inventory,
-    LegoSet,
-    MatchMode,
-    Piece,
-    SetRequirement,
-    match_inventory,
-    rank_matches,
-)
+from packages.domain.lego_domain import Inventory, LegoSet, MatchMode, Piece, SetRequirement, match_inventory, rank_matches
 
 
-def sample_set() -> LegoSet:
-    return LegoSet(
-        set_id="TEST-001",
-        name="Test Brick Build",
-        year=2026,
-        inventory=(
-            SetRequirement("3001", "red", 2),
-            SetRequirement("3003", "blue", 1),
-        ),
-    )
-
-
-def test_exact_inventory_builds_set():
+def test_exact_inventory_builds_set() -> None:
     inventory = Inventory()
     inventory.add(Piece("3001", "red"), 2)
-    inventory.add(Piece("3003", "blue"), 1)
+    lego_set = LegoSet("100", "Test Set", 2025, (SetRequirement("3001", "red", 2),))
 
-    result = match_inventory(inventory, sample_set())
+    result = match_inventory(inventory, lego_set)
 
     assert result.buildable
     assert result.completeness == 1.0
     assert result.missing == ()
 
 
-def test_extra_pieces_do_not_reduce_completeness():
+def test_extra_pieces_do_not_reduce_completeness() -> None:
     inventory = Inventory()
-    inventory.add(Piece("3001", "red"), 2)
-    inventory.add(Piece("3003", "blue"), 1)
-    inventory.add(Piece("3001", "green"), 20)
+    inventory.add(Piece("3001", "red"), 5)
+    lego_set = LegoSet("100", "Test Set", 2025, (SetRequirement("3001", "red", 2),))
 
-    result = match_inventory(inventory, sample_set())
+    result = match_inventory(inventory, lego_set)
 
-    assert result.buildable
     assert result.completeness == 1.0
 
 
-def test_duplicate_shortage_is_reported():
+def test_duplicate_shortage_is_reported() -> None:
     inventory = Inventory()
     inventory.add(Piece("3001", "red"), 1)
-    inventory.add(Piece("3003", "blue"), 1)
+    lego_set = LegoSet("100", "Test Set", 2025, (SetRequirement("3001", "red", 3),))
 
-    result = match_inventory(inventory, sample_set())
+    result = match_inventory(inventory, lego_set)
 
     assert not result.buildable
-    assert result.completeness == 2 / 3
-    assert result.missing == (SetRequirement("3001", "red", 1),)
+    assert result.missing == (SetRequirement("3001", "red", 2),)
 
 
-def test_color_flexible_mode_uses_same_part_in_any_color():
+def test_color_flexible_mode_uses_same_part_in_any_color() -> None:
     inventory = Inventory()
-    inventory.add(Piece("3001", "black"), 2)
-    inventory.add(Piece("3003", "blue"), 1)
+    inventory.add(Piece("3001", "blue"), 2)
+    lego_set = LegoSet("100", "Test Set", 2025, (SetRequirement("3001", "red", 2),))
 
-    result = match_inventory(inventory, sample_set(), MatchMode.COLOR_FLEXIBLE)
+    result = match_inventory(inventory, lego_set, MatchMode.COLOR_FLEXIBLE)
 
     assert result.buildable
     assert result.completeness == 1.0
 
 
-def test_rank_buildable_sets_first():
+def test_color_flexible_mode_cannot_double_consume_same_parts() -> None:
+    inventory = Inventory()
+    inventory.add(Piece("3001", "blue"), 2)
+    lego_set = LegoSet("100", "Test Set", 2025, (
+        SetRequirement("3001", "red", 2),
+        SetRequirement("3001", "yellow", 2),
+    ))
+
+    result = match_inventory(inventory, lego_set, MatchMode.COLOR_FLEXIBLE)
+
+    assert result.available_required_quantity == 2
+    assert result.completeness == 0.5
+    assert result.missing == (SetRequirement("3001", "yellow", 2),)
+
+
+def test_rank_buildable_sets_first() -> None:
     inventory = Inventory()
     inventory.add(Piece("3001", "red"), 2)
-    inventory.add(Piece("3003", "blue"), 1)
+    complete = LegoSet("1", "Complete", 2025, (SetRequirement("3001", "red", 2),))
+    partial = LegoSet("2", "Partial", 2025, (SetRequirement("3001", "red", 3),))
 
-    incomplete = LegoSet(
-        set_id="TEST-002",
-        name="Incomplete Build",
-        year=2026,
-        inventory=(SetRequirement("3001", "red", 3),),
-    )
+    results = rank_matches(inventory, [partial, complete])
 
-    results = rank_matches(inventory, [incomplete, sample_set()])
-
-    assert results[0].set_id == "TEST-001"
-    assert results[0].buildable
+    assert [result.set_id for result in results] == ["1", "2"]

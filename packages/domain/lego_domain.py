@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Mapping
-
 
 InventoryKey = tuple[str, str]
 
@@ -70,11 +68,7 @@ class MatchResult:
         return not self.missing
 
 
-def match_inventory(
-    inventory: Inventory,
-    lego_set: LegoSet,
-    mode: MatchMode = MatchMode.EXACT,
-) -> MatchResult:
+def match_inventory(inventory: Inventory, lego_set: LegoSet, mode: MatchMode = MatchMode.EXACT) -> MatchResult:
     required = sum(item.quantity for item in lego_set.inventory)
     available = 0
     missing: list[SetRequirement] = []
@@ -82,22 +76,23 @@ def match_inventory(
     if mode == MatchMode.EXACT:
         for item in lego_set.inventory:
             have = inventory.pieces.get((item.part_id, item.color), 0)
-            available += min(have, item.quantity)
-            if have < item.quantity:
-                missing.append(
-                    SetRequirement(item.part_id, item.color, item.quantity - have)
-                )
+            supplied = min(have, item.quantity)
+            available += supplied
+            if supplied < item.quantity:
+                missing.append(SetRequirement(item.part_id, item.color, item.quantity - supplied))
     elif mode == MatchMode.COLOR_FLEXIBLE:
+        # Consume a shared pool per part so the same physical pieces cannot
+        # satisfy multiple color requirements twice.
         by_part: dict[str, int] = {}
         for (part_id, _color), quantity in inventory.pieces.items():
             by_part[part_id] = by_part.get(part_id, 0) + quantity
         for item in lego_set.inventory:
             have = by_part.get(item.part_id, 0)
-            available += min(have, item.quantity)
-            if have < item.quantity:
-                missing.append(
-                    SetRequirement(item.part_id, item.color, item.quantity - have)
-                )
+            supplied = min(have, item.quantity)
+            available += supplied
+            by_part[item.part_id] = have - supplied
+            if supplied < item.quantity:
+                missing.append(SetRequirement(item.part_id, item.color, item.quantity - supplied))
     else:
         raise ValueError(f"unsupported match mode: {mode}")
 
@@ -113,11 +108,7 @@ def match_inventory(
     )
 
 
-def rank_matches(
-    inventory: Inventory,
-    sets: list[LegoSet],
-    mode: MatchMode = MatchMode.EXACT,
-) -> list[MatchResult]:
+def rank_matches(inventory: Inventory, sets: list[LegoSet], mode: MatchMode = MatchMode.EXACT) -> list[MatchResult]:
     return sorted(
         (match_inventory(inventory, lego_set, mode) for lego_set in sets),
         key=lambda result: (result.buildable, result.completeness, -len(result.missing)),
