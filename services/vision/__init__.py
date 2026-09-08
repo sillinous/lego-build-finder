@@ -1,4 +1,5 @@
 from .classifier import EmptyPartClassifier, PartClassifier
+from .color import ColorCandidate, ColorClassifier, EmptyColorClassifier, FixedColorClassifier
 from .detector import Detection, EmptyPieceDetector, PieceDetector
 from .engine import LegoVisionEngine
 from .image_loader import ImageLoader, OpenCVImageLoader
@@ -11,10 +12,14 @@ from .scan_processor import ProcessedScan, ScanProcessor
 
 __all__ = [
     "BoundingBox",
+    "ColorCandidate",
+    "ColorClassifier",
     "Detection",
+    "EmptyColorClassifier",
     "EmptyPartClassifier",
     "EmptyPieceDetector",
     "EmptyVisionEngine",
+    "FixedColorClassifier",
     "Frame",
     "FrameExtractor",
     "ImageFrameExtractor",
