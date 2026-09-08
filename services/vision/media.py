@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from .models import BoundingBox, Frame, MediaType
+from .models import Frame, MediaType
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,7 @@ class FrameExtractor(Protocol):
 
 
 class ImageFrameExtractor:
-    """Create a single frame for an image asset without requiring OpenCV."""
+    """Create a single frame reference for an image asset."""
 
     def extract(self, asset: MediaAsset) -> tuple[Frame, ...]:
         if asset.media_type != MediaType.IMAGE:
@@ -31,16 +31,12 @@ class ImageFrameExtractor:
             index=0,
             timestamp_ms=0,
             observations=(),
+            source_path=str(asset.path),
         ),)
 
 
 class OpenCVFrameExtractor:
-    """Extract a bounded, evenly sampled set of video frames.
-
-    OpenCV is imported lazily so image-only deployments do not need the
-    dependency. The extractor intentionally returns metadata-only Frame
-    objects; pixel storage remains an ingestion concern.
-    """
+    """Extract a bounded, evenly sampled set of video frame references."""
 
     def __init__(self, max_frames: int = 60) -> None:
         if max_frames < 1:
@@ -80,6 +76,7 @@ class OpenCVFrameExtractor:
                     index=index,
                     timestamp_ms=timestamp_ms,
                     observations=(),
+                    source_path=str(asset.path),
                 ))
             return tuple(frames)
         finally:
