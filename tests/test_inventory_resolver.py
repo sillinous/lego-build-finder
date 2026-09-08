@@ -22,7 +22,7 @@ def test_tracked_piece_seen_in_multiple_frames_counts_once() -> None:
     assert inventory.pieces == {("3001", "red"): 1}
 
 
-def test_untracked_observations_are_not_guess-deduplicated() -> None:
+def test_untracked_observations_are_not_guess_deduplicated() -> None:
     resolver = InventoryResolver()
     inventory = resolver.resolve([
         observation("a", "3001", "red", 0.95),
