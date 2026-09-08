@@ -4,13 +4,14 @@ from .candidate_resolver import CatalogCandidateResolver
 from .classifier import EmptyPartClassifier, PartClassifier
 from .color import ColorClassifier, EmptyColorClassifier
 from .color_resolver import CatalogColorResolver
+from .crops import crop_detection
 from .detector import EmptyPieceDetector, PieceDetector
 from .image_loader import OpenCVImageLoader
 from .models import Frame, PartCandidate, PieceObservation
 
 
 class LegoVisionEngine:
-    """Compose replaceable detection, part classification, and color resolution."""
+    """Compose replaceable detection, crop-based recognition, and catalog resolution."""
 
     def __init__(
         self,
@@ -28,6 +29,18 @@ class LegoVisionEngine:
         self.part_resolver = part_resolver
         self.color_resolver = color_resolver
 
+    @staticmethod
+    def _recognition_image(image, detection):
+        """Return a detection crop when the loader returned an array-like image.
+
+        Test doubles and legacy loaders may return non-array objects; those retain
+        the original full-image contract rather than failing solely because they
+        cannot be cropped.
+        """
+        if not hasattr(image, "shape"):
+            return image
+        return crop_detection(image, detection).image
+
     def process_frame(self, frame: Frame) -> tuple[PieceObservation, ...]:
         detections = self.detector.detect(frame)
         if not detections:
@@ -37,14 +50,15 @@ class LegoVisionEngine:
         image = self.image_loader.load(frame.source_path)
         observations: list[PieceObservation] = []
         for detection in detections:
-            candidates = tuple(self.classifier.classify(detection, image))
+            recognition_image = self._recognition_image(image, detection)
+            candidates = tuple(self.classifier.classify(detection, recognition_image))
             if self.part_resolver is not None:
                 candidates = self.part_resolver.resolve(candidates)
                 candidates = tuple(
                     PartCandidate(item.part_id, item.color, item.confidence) for item in candidates
                 )
 
-            color_candidates = tuple(self.color_classifier.classify(image))
+            color_candidates = tuple(self.color_classifier.classify(recognition_image))
             if self.color_resolver is not None:
                 color = self.color_resolver.resolve_best(color_candidates)
                 if color is None:
