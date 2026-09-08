@@ -52,6 +52,7 @@ class Frame:
     index: int
     timestamp_ms: int
     observations: tuple[PieceObservation, ...]
+    source_path: str | None = None
 
 
 @dataclass(frozen=True)
