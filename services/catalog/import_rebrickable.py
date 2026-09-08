@@ -42,27 +42,11 @@ def import_rebrickable(data_dir: str | Path, database: str | Path) -> tuple[int,
         if set_num in valid_sets:
             inventory_to_set[row["id"]] = set_num
 
+    # Keep the complete per-set aggregate in memory so a set is never
+    # accidentally written with a partial inventory. The catalog is currently
+    # small enough for this bootstrap importer; a future production importer
+    # can replace this with a SQL staging-table pipeline.
     parts_by_set: dict[str, dict[tuple[str, str], int]] = defaultdict(lambda: defaultdict(int))
-    imported_sets = 0
-    imported_rows = 0
-
-    def flush() -> None:
-        nonlocal imported_sets, imported_rows
-        if not parts_by_set:
-            return
-        batch: list[LegoSet] = []
-        for set_num, pieces in parts_by_set.items():
-            name, year = valid_sets[set_num]
-            requirements = tuple(
-                SetRequirement(part_id, color_id, quantity)
-                for (part_id, color_id), quantity in sorted(pieces.items())
-            )
-            batch.append(LegoSet(set_num, name, year, requirements))
-            imported_rows += len(requirements)
-        catalog.upsert_sets(batch)
-        imported_sets += len(batch)
-        parts_by_set.clear()
-
     for row in _rows(paths[2]):
         if row.get("is_spare", "N").strip().upper() == "Y":
             continue
@@ -73,10 +57,19 @@ def import_rebrickable(data_dir: str | Path, database: str | Path) -> tuple[int,
         if quantity <= 0:
             continue
         parts_by_set[set_num][(row["part_num"].strip(), row["color_id"].strip())] += quantity
-        if len(parts_by_set) >= 500:
-            flush()
 
-    flush()
+    def sets():
+        for set_num, pieces in parts_by_set.items():
+            name, year = valid_sets[set_num]
+            requirements = tuple(
+                SetRequirement(part_id, color_id, quantity)
+                for (part_id, color_id), quantity in sorted(pieces.items())
+            )
+            yield LegoSet(set_num, name, year, requirements)
+
+    imported_sets = len(parts_by_set)
+    imported_rows = sum(len(pieces) for pieces in parts_by_set.values())
+    catalog.upsert_sets(sets())
     return imported_sets, imported_rows
 
 
