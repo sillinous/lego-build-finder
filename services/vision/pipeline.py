@@ -44,7 +44,13 @@ class ScanPipeline:
         all_observations: list[PieceObservation] = []
         for frame in frames:
             observations = tuple(self.engine.process_frame(frame))
-            processed = Frame(frame.frame_id, frame.index, frame.timestamp_ms, observations)
+            processed = Frame(
+                frame.frame_id,
+                frame.index,
+                frame.timestamp_ms,
+                observations,
+                frame.source_path,
+            )
             processed_frames.append(processed)
             all_observations.extend(observations)
 
