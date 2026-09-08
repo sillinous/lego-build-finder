@@ -1,5 +1,8 @@
+from .candidate_resolver import CatalogCandidateResolver, ResolvedPart
 from .classifier import EmptyPartClassifier, PartClassifier
 from .color import ColorCandidate, ColorClassifier, EmptyColorClassifier, FixedColorClassifier
+from .color_resolver import CatalogColorResolver, ResolvedColor
+from .color_resolver import CatalogColorResolver, ResolvedColor
 from .detector import Detection, EmptyPieceDetector, PieceDetector
 from .engine import LegoVisionEngine
 from .image_loader import ImageLoader, OpenCVImageLoader
@@ -12,6 +15,8 @@ from .scan_processor import ProcessedScan, ScanProcessor
 
 __all__ = [
     "BoundingBox",
+    "CatalogCandidateResolver",
+    "CatalogColorResolver",
     "ColorCandidate",
     "ColorClassifier",
     "Detection",
@@ -36,6 +41,8 @@ __all__ = [
     "PieceDetector",
     "PieceObservation",
     "ProcessedScan",
+    "ResolvedColor",
+    "ResolvedPart",
     "ScanIngestionService",
     "ScanJob",
     "ScanProcessor",
