@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 data/catalog.db
 data/rebrickable/
+data/uploads/
