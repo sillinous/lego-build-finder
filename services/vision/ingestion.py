@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .models import MediaType
-from .scan_jobs import InMemoryScanJobStore, ScanJob
+from .scan_jobs import InMemoryScanJobStore, ScanJob, ScanStatus
 
 
 @dataclass(frozen=True)
@@ -51,8 +51,8 @@ class ScanIngestionService:
         job = self.jobs.create(media_type)
         try:
             media = self.media_store.save(job.scan_id, media_type, filename, content)
-        except Exception:
-            job.transition(job.status.FAILED, error="media could not be stored")
+        except Exception as exc:
+            job.transition(ScanStatus.FAILED, error=str(exc))
             self.jobs.update(job)
             raise
         return job, media
