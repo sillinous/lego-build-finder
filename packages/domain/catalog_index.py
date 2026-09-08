@@ -13,12 +13,8 @@ class CandidateSet:
     overlap: int
 
 
-class CatalogIndex:
-    """In-memory inverted index used by the catalog service.
-
-    Production deployments can replace the storage implementation while
-    keeping this candidate-discovery contract unchanged.
-    """
+class InMemoryCatalogIndex:
+    """In-memory inverted index used for tests and small local catalogs."""
 
     def __init__(self, sets: Iterable[LegoSet] = ()) -> None:
         self._sets: dict[str, LegoSet] = {}
@@ -50,3 +46,7 @@ class CatalogIndex:
 
     def candidate_sets(self, inventory: Inventory, limit: int = 500) -> list[LegoSet]:
         return [self._sets[set_id] for set_id in self.candidate_ids(inventory, limit)]
+
+
+# Backwards-compatible name for callers that used the original prototype class.
+CatalogIndex = InMemoryCatalogIndex
