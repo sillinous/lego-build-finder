@@ -20,7 +20,7 @@ tests                   Fixtures and integration tests
 
 ## Catalog strategy
 
-The runtime matcher uses a local SQLite catalog rather than making a Rebrickable API request for every scan. Rebrickable explicitly directs applications that need the full catalog or high-volume access to its downloadable CSV files. The API remains an optional provider for targeted lookups and future synchronization. citeturn0search1turn0search2
+The runtime matcher uses a local SQLite catalog rather than making a Rebrickable API request for every scan. Rebrickable recommends its downloadable CSV files for full-catalog or high-volume use. The API remains an optional provider for targeted lookups and future synchronization.
 
 The downloaded source files are intentionally **not committed to Git**. Import them locally into `data/catalog.db`.
 
