@@ -1,23 +1,32 @@
 from __future__ import annotations
 
+from .candidate_resolver import CatalogCandidateResolver
 from .classifier import EmptyPartClassifier, PartClassifier
+from .color import ColorClassifier, EmptyColorClassifier
+from .color_resolver import CatalogColorResolver
 from .detector import EmptyPieceDetector, PieceDetector
 from .image_loader import OpenCVImageLoader
-from .models import BoundingBox, Frame, PartCandidate, PieceObservation
+from .models import Frame, PartCandidate, PieceObservation
 
 
 class LegoVisionEngine:
-    """Compose detection and classification while keeping model choices replaceable."""
+    """Compose replaceable detection, part classification, and color resolution."""
 
     def __init__(
         self,
         detector: PieceDetector | None = None,
         classifier: PartClassifier | None = None,
         image_loader=None,
+        color_classifier: ColorClassifier | None = None,
+        part_resolver: CatalogCandidateResolver | None = None,
+        color_resolver: CatalogColorResolver | None = None,
     ) -> None:
         self.detector = detector or EmptyPieceDetector()
         self.classifier = classifier or EmptyPartClassifier()
         self.image_loader = image_loader or OpenCVImageLoader()
+        self.color_classifier = color_classifier or EmptyColorClassifier()
+        self.part_resolver = part_resolver
+        self.color_resolver = color_resolver
 
     def process_frame(self, frame: Frame) -> tuple[PieceObservation, ...]:
         detections = self.detector.detect(frame)
@@ -29,6 +38,23 @@ class LegoVisionEngine:
         observations: list[PieceObservation] = []
         for detection in detections:
             candidates = tuple(self.classifier.classify(detection, image))
+            if self.part_resolver is not None:
+                candidates = self.part_resolver.resolve(candidates)
+                candidates = tuple(
+                    PartCandidate(item.part_id, item.color, item.confidence) for item in candidates
+                )
+
+            color_candidates = tuple(self.color_classifier.classify(image))
+            if self.color_resolver is not None:
+                color = self.color_resolver.resolve_best(color_candidates)
+                if color is None:
+                    candidates = ()
+                else:
+                    candidates = tuple(
+                        PartCandidate(item.part_id, color.color_id, item.confidence)
+                        for item in candidates
+                    )
+
             observations.append(
                 PieceObservation(
                     observation_id=detection.detection_id,
