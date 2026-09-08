@@ -16,6 +16,7 @@ def test_image_extractor_creates_single_frame(tmp_path: Path) -> None:
     assert frames[0].frame_id == "scan-1-frame-0"
     assert frames[0].index == 0
     assert frames[0].timestamp_ms == 0
+    assert frames[0].source_path == str(path)
 
 
 def test_image_extractor_rejects_video() -> None:
