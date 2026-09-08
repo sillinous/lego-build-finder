@@ -2,7 +2,6 @@ from .candidate_resolver import CatalogCandidateResolver, ResolvedPart
 from .classifier import EmptyPartClassifier, PartClassifier
 from .color import ColorCandidate, ColorClassifier, EmptyColorClassifier, FixedColorClassifier
 from .color_resolver import CatalogColorResolver, ResolvedColor
-from .color_resolver import CatalogColorResolver, ResolvedColor
 from .detector import Detection, EmptyPieceDetector, PieceDetector
 from .engine import LegoVisionEngine
 from .image_loader import ImageLoader, OpenCVImageLoader
