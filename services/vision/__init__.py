@@ -5,8 +5,10 @@ from .color_resolver import CatalogColorResolver, ResolvedColor
 from .detector import Detection, EmptyPieceDetector, PieceDetector
 from .engine import LegoVisionEngine
 from .image_loader import ImageLoader, OpenCVImageLoader
+from .inference import ClassPrediction, InferenceConfig, InferenceModel
 from .ingestion import MediaStore, ScanIngestionService, StoredMedia
 from .media import FrameExtractor, ImageFrameExtractor, MediaAsset, OpenCVFrameExtractor, default_extractor
+from .model_artifact import ModelArtifactCompatibilityError, ModelArtifactMetadata
 from .models import BoundingBox, Frame, MediaType, PartCandidate, PieceObservation, ScanResult
 from .pipeline import EmptyVisionEngine, ScanPipeline, ScanPipelineResult, VisionEngine
 from .scan_jobs import InMemoryScanJobStore, ScanJob, ScanStatus
@@ -16,6 +18,7 @@ __all__ = [
     "BoundingBox",
     "CatalogCandidateResolver",
     "CatalogColorResolver",
+    "ClassPrediction",
     "ColorCandidate",
     "ColorClassifier",
     "Detection",
@@ -29,10 +32,13 @@ __all__ = [
     "ImageFrameExtractor",
     "ImageLoader",
     "InMemoryScanJobStore",
+    "InferenceConfig",
+    "InferenceModel",
     "LegoVisionEngine",
     "MediaAsset",
     "MediaStore",
-    "MediaType",
+    "ModelArtifactCompatibilityError",
+    "ModelArtifactMetadata",
     "OpenCVFrameExtractor",
     "OpenCVImageLoader",
     "PartCandidate",
