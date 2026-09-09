@@ -5,6 +5,7 @@ from typing import Protocol
 from .classifier import PartClassifier
 from .detector import Detection, PieceDetector
 from .image_loader import ImageLoader
+from .inference import InferenceModel
 from .models import Frame, PartCandidate
 
 
@@ -31,10 +32,23 @@ class ModelPieceDetector:
 
 
 class ModelPartClassifier:
-    """Delegate ranked part candidates to the injected model."""
+    """Delegate ranked part candidates to the injected model using a crop."""
 
     def __init__(self, model: ImageInferenceModel) -> None:
         self.model = model
 
     def classify(self, detection: Detection, image) -> tuple[PartCandidate, ...]:
         return tuple(self.model.classify(detection, image))
+
+
+class InferenceModelAdapter:
+    """Adapter allowing the engine to consume the centralized InferenceModel facade."""
+
+    def __init__(self, model: InferenceModel) -> None:
+        self.model = model
+
+    def detect(self, image) -> list[Detection]:
+        return self.model.detect(image)
+
+    def classify(self, detection: Detection, image) -> list[PartCandidate]:
+        return self.model.classify(detection, image)
