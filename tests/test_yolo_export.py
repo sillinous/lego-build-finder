@@ -1,7 +1,3 @@
-from pathlib import Path
-
-from PIL import Image
-
 from services.catalog.class_index import CanonicalClassIndex
 from services.catalog.detection_annotations import DetectionAnnotation
 from services.catalog.detection_bundle import build_detection_dataset
@@ -10,7 +6,7 @@ from services.catalog.yolo_export import export_yolo_dataset
 
 def test_yolo_export_writes_normalized_center_boxes_and_class_names(tmp_path) -> None:
     image = tmp_path / "pile.jpg"
-    Image.new("RGB", (100, 100)).save(image)
+    image.write_bytes(b"test image bytes")
     class_index = CanonicalClassIndex((("3001", "21"), ("3024", "1")))
     dataset = build_detection_dataset(
         (
