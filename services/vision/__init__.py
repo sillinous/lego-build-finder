@@ -13,6 +13,7 @@ from .models import BoundingBox, Frame, MediaType, PartCandidate, PieceObservati
 from .pipeline import EmptyVisionEngine, ScanPipeline, ScanPipelineResult, VisionEngine
 from .scan_jobs import InMemoryScanJobStore, ScanJob, ScanStatus
 from .scan_processor import ProcessedScan, ScanProcessor
+from .yolo_adapter import UltralyticsYoloTrainer, YoloTrainingRequest, YoloTrainingResult
 
 __all__ = [
     "BoundingBox",
@@ -56,6 +57,9 @@ __all__ = [
     "ScanResult",
     "ScanStatus",
     "StoredMedia",
+    "UltralyticsYoloTrainer",
     "VisionEngine",
+    "YoloTrainingRequest",
+    "YoloTrainingResult",
     "default_extractor",
 ]
